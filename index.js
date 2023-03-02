@@ -1,6 +1,7 @@
 import axios from 'axios'
 import express from "express"
 import cors from 'cors'
+import fetch from 'node-fetch'
 import { connection } from './connection.js'
 const app =  express()
 
@@ -26,7 +27,7 @@ app.get('/balance', (req, res)=>{
         let userData = {} //armazena os dados vindos da api do Asaas
         let theKey
         let theBody
-      //faz várias requisições para buscar quanto tem em cada conta
+      //faz várias requisições para buscar quanto tem em cada conta mapeada
        axios.get('https://www.asaas.com/api/v3/finance/balance', {
          headers: {
           'access_token': `${d.api_key}`,
@@ -40,7 +41,7 @@ app.get('/balance', (req, res)=>{
           userData.api_key = d.api_key
           theKey = d.api_key
           //retorna o nome, valor disponível na conta e a chave da api
-          //return resp.data.balance !== 0 ? console.log(d.nome, resp.data.balance, d.api_key) : ""
+          return resp.data.balance !== 0 ? console.log(d.nome, resp.data.balance, d.api_key) : ""
           // return console.log(balance)
        }).then((resp)=>{
         //busca os dados das contas bancárias a serem depositadas 
@@ -52,7 +53,7 @@ app.get('/balance', (req, res)=>{
                             agencia, 
                             conta_corrente, 
                             conta_corrente_digito, 
-                            tipo_pix
+                            profissional_saude_financeiro.tipo_pix
                             FROM profissional_saude_financeiro 
                             JOIN (profissional_saude, bancos) 
                             WHERE profissional_saude_financeiro.profissional_id = profissional_saude.id
@@ -61,13 +62,26 @@ app.get('/balance', (req, res)=>{
           (err,data)=>{
             if(err) return console.log(err.message)
             // return console.log(data)
+
+            //Verifica id do banco se possui o padrão 000 com tres números, ex.: banco do brasil -> 001, e não 1
+            let splited = (data[0].id.toString().split(""))
+            if(splited.length<3){
+              if(splited.length===1){
+                splited.unshift("00")
+                splited = splited.join('')
+              } else if( splited.length===2){
+                splited.unshift("0")
+                splited = splited.join('')
+              }
+              // console.log(splited)
+            }
             // monta o body para a requisição
             if(userData.balance>0){
               theBody = {
                 "value": userData.balance,
                 "bankAccount": {
                   "bank": {
-                    "code": data[0].id
+                    "code": `${splited}`
                   },
                   "accountName": data[0].nome,
                   "ownerName": d.nome+' '+d.sobrenome,
@@ -78,35 +92,18 @@ app.get('/balance', (req, res)=>{
                   "bankAccountType": 'CONTA_CORRENTE'
                 }
               }
-              // console.log("key", d.api_key)
-              // console.log({"theBody": theBody, "apikey": (theApiKey)})
             }
-            // console.log("theBody", theBody)
-            axios.post('https://www.asaas.com/api/v3/transfers',{
-              data: {
-                "value": userData.balance,
-                "bankAccount": {
-                  "bank": {
-                    "code": data[0].id
-                  },
-                  "accountName": data[0].nome,
-                  "ownerName": d.nome+' '+d.sobrenome,
-                  "cpfCnpj": data[0].cpf,
-                  "agency": data[0].agencia,
-                  "account": `${data[0].conta_corrente}`,
-                  "accountDigit": `${data[0].conta_corrente_digito}`,
-                  "bankAccountType": 'CONTA_CORRENTE'
-              }},
+            //faz a requisição por fetch pois o axios estava com erro
+            fetch('https://www.asaas.com/api/v3/transfers',{
+              method: 'post',
+              body: JSON.stringify(theBody),
               headers: {
-                'Content-Type': 'application/json',
-                'access_token': `${userData.api_key}`,
-              },
-            }).then(resp=>{
-              return console.log("final", resp.data)
+                'Content-Type':'application/json',
+                'access_token': `${userData.api_key}`
+              }
             })
-            .catch(error=>{
-              if(error) return console.log(theBody?{"********":"********","body": theBody, "error.message":error.message, "userData.api_key": userData.api_key, "code": data[0].id }:'não enviou')
-            })
+            .then(resposta=>resposta.json())
+            .then(resposta => console.log(theBody?{"resposta":resposta.message, "erro": resposta.errors, "nome": d.nome, "body":theBody, "apiKey":userData.api_key}:"sem body"))
           })
         })
       })
