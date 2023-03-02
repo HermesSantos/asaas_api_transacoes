@@ -1,2 +1,2 @@
 # asaas_api_transacoes
-rotina de transação para a API do banco ASAAS
+API em node feita para rotina de integração e transações financeiras para a API do banco ASAAS
