@@ -42,7 +42,6 @@ app.get('/profissional', (req, res)=>{
           theKey = d.api_key
           //retorna o nome, valor disponível na conta e a chave da api
           return resp.data.balance !== 0 ? console.log(d.nome, resp.data.balance, d.api_key) : ""
-          // return console.log(balance)
        }).then((resp)=>{
         //busca os dados das contas bancárias a serem depositadas 
         connection.query(`SELECT
@@ -61,7 +60,6 @@ app.get('/profissional', (req, res)=>{
                             AND bancos.id = profissional_saude_financeiro.banco_id;`,
           (err,data)=>{
             if(err) return console.log(err.message)
-            // return console.log(data)
 
             //Verifica id do banco se possui o padrão 000 com tres números, ex.: banco do brasil -> 001, e não 1
             let splited = (data[0].id.toString().split(""))
@@ -73,7 +71,6 @@ app.get('/profissional', (req, res)=>{
                 splited.unshift("0")
                 splited = splited.join('')
               }
-              // console.log(splited)
             }
             // monta o body para a requisição
             if(userData.balance>0){
@@ -158,7 +155,6 @@ app.get('/clinica', (req, res)=>{
             if(err) return console.log(err.message)
             //Verifica id do banco se possui o padrão 000 com tres números, ex.: banco do brasil -> 001, e não 1
             let splited = (data[0].id)
-            // let joined
             if((data[0].id.toString().split("")).length<3){
                 if(splited.length===1){
                   splited.unshift("00")

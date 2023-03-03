@@ -12,9 +12,5 @@ export const connection = mysql.createConnection(config)
 
 connection.connect((err)=>{
   if(err) return console.log(err.message)
-  return console.log("DB Conectada")
+  return console.log("DataBase connected")
 })
-
-// connection.query("select * from bancos", (err, data)=>{
-//   err ? err.message : console.log(data)
-// })
