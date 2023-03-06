@@ -12,6 +12,31 @@ app.get('/', (req, res)=>{
   return res.json("online")
 })
 
+app.get('/general-balance', (req, res) => {
+  connection.query(`SELECT
+                    profissional_saude.nome,
+                    profissional_saude.sobrenome,
+                    profissional_saude_asaas.api_key
+                    FROM profissional_saude_asaas
+                    JOIN profissional_saude
+                    WHERE profissional_saude.id = profissional_saude_asaas.profissional_id`,
+    (err, data) => {
+      if(err) return console.log(err)
+      data.map(user=>{
+       axios.get('https://www.asaas.com/api/v3/finance/balance', {
+         headers: {
+          'access_token': `${user.api_key}`,
+          'Content-Type': 'application/json',
+          'limit': '1000'
+         }
+       }).then(response=>{
+        console.log({"Nome":user.nome,"Balance":response.data.balance})
+       })
+      })
+    }
+  )
+})
+
 app.get('/profissional', (req, res)=>{
   //busca profissionais de saúde e suas respectivas api_keys no banco local
   connection.query(`SELECT
@@ -61,7 +86,7 @@ app.get('/profissional', (req, res)=>{
           (err,data)=>{
             if(err) return console.log(err.message)
 
-            //Verifica id do banco se possui o padrão 000 com tres números, ex.: banco do brasil -> 001, e não 1
+            //Verifica id do banco se possui o padrão 000 com tres números, ex.: banco do brasil de '1' passa a ser '001' 
             let splited = (data[0].id.toString().split(""))
             if(splited.length<3){
               if(splited.length===1){
@@ -102,6 +127,7 @@ app.get('/profissional', (req, res)=>{
             .then(resposta=>resposta.json())
             .then(resposta => console.log(theBody?{"resposta":resposta.message, "erro": resposta.errors, "nome": d.nome, "body":theBody, "apiKey":userData.api_key}:"sem body"))
           })
+          //listar saldos
         })
       })
     })
@@ -202,5 +228,5 @@ app.get('/clinica', (req, res)=>{
 })
 
 app.listen(3000, ()=>{
-  console.log("servidor na porta 3k")
+  console.log("Server running on port 3000")
 })
