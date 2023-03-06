@@ -85,7 +85,6 @@ app.get('/profissional', (req, res)=>{
                             AND bancos.id = profissional_saude_financeiro.banco_id;`,
           (err,data)=>{
             if(err) return console.log(err.message)
-
             //Verifica id do banco se possui o padrão 000 com tres números, ex.: banco do brasil de '1' passa a ser '001' 
             let splited = (data[0].id.toString().split(""))
             if(splited.length<3){
@@ -125,7 +124,12 @@ app.get('/profissional', (req, res)=>{
               }
             })
             .then(resposta=>resposta.json())
-            .then(resposta => console.log(theBody?{"resposta":resposta.message, "erro": resposta.errors, "nome": d.nome, "body":theBody, "apiKey":userData.api_key}:"sem body"))
+            .then(resposta => console.log(theBody ? {"resposta":resposta.message,
+                                                     "erro": resposta.errors,
+                                                     "nome": d.nome,
+                                                     "body":theBody,
+                                                     "apiKey":userData.api_key}
+                                                     : "sem body"))
           })
           //listar saldos
         })
@@ -161,7 +165,10 @@ app.get('/clinica', (req, res)=>{
           userData.api_key = d.api_key
           theKey = d.api_key
           //retorna o nome, valor disponível na conta e a chave da api
-          return resp.data.balance !== 0 ? console.log(d.razao_social, resp.data.balance, d.api_key) : "sem balance"
+          return resp.data.balance !== 0 ?
+          console.log(d.razao_social, resp.data.balance, d.api_key)
+          : "sem balance"
+
        }).then((resp)=>{
         //busca os dados das contas bancárias a serem depositadas 
         connection.query(`SELECT
@@ -220,7 +227,13 @@ app.get('/clinica', (req, res)=>{
               }
             })
             .catch(error=>console.log("errooooo", error))
-            .then(resposta => console.log(theBody?{"resposta":resposta, "nome": d.razao_social, "body":theBody, "apiKey":userData.api_key}:{"Sem saldo":d.razao_social}))
+            .then(resposta => console.log(theBody?
+              {
+               "resposta":resposta,
+               "nome": d.razao_social, 
+               "body":theBody, 
+               "apiKey":userData.api_key
+              } : {"Sem saldo":d.razao_social}))
           })
         })
       })
