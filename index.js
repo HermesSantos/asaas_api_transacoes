@@ -16,10 +16,14 @@ app.get('/general-balance', (req, res) => {
   connection.query(`SELECT
                     profissional_saude.nome,
                     profissional_saude.sobrenome,
-                    profissional_saude_asaas.api_key
+                    profissional_saude_asaas.api_key,
+                    clinicas_parceiras.razao_social,
+                    clinicas_parceiras_asaas.api_key
                     FROM profissional_saude_asaas
-                    JOIN profissional_saude
-                    WHERE profissional_saude.id = profissional_saude_asaas.profissional_id`,
+                    JOIN (profissional_saude, clinicas_parceiras, clinicas_parceiras_asaas)
+                    WHERE profissional_saude.id = profissional_saude_asaas.profissional_id
+                    AND clinicas_parceiras.id = clinicas_parceiras_asaas.clinica_parceira_id
+                    `,
     (err, data) => {
       if(err) return console.log(err)
       data.map(user=>{
@@ -85,7 +89,8 @@ app.get('/profissional', (req, res)=>{
                             AND bancos.id = profissional_saude_financeiro.banco_id;`,
           (err,data)=>{
             if(err) return console.log(err.message)
-            //Verifica id do banco se possui o padrão 000 com tres números, ex.: banco do brasil de '1' passa a ser '001' 
+            //Verifica id do banco se possui o padrão 000 com tres números,
+            //ex.: banco do brasil de '1' passa a ser '001' 
             let splited = (data[0].id.toString().split(""))
             if(splited.length<3){
               if(splited.length===1){
@@ -96,7 +101,7 @@ app.get('/profissional', (req, res)=>{
                 splited = splited.join('')
               }
             }
-            // monta o body para a requisição
+            // monta o body para a requisição apenas se o saldo for maior que zero
             if(userData.balance>0){
               theBody = {
                 "value": userData.balance,
@@ -113,25 +118,25 @@ app.get('/profissional', (req, res)=>{
                   "bankAccountType": 'CONTA_CORRENTE'
                 }
               }
+              //faz a requisição por fetch pois o axios estava com erro
+              fetch('https://www.asaas.com/api/v3/transfers',{
+                method: 'post',
+                body: JSON.stringify(theBody),
+                headers: {
+                  'Content-Type':'application/json',
+                  'access_token': `${userData.api_key}`
+                }
+              })
+              .then(resposta => console.log(theBody ? {"resposta":resposta.message,
+                                                       "erro": resposta,
+                                                       "nome": d.nome,
+                                                       "body":theBody,
+                                                       "apiKey":userData.api_key}
+                                                       : "sem body"))
+            } else {
+              console.log("Sem saldo", userData.nome)
             }
-            //faz a requisição por fetch pois o axios estava com erro
-            fetch('https://www.asaas.com/api/v3/transfers',{
-              method: 'post',
-              body: JSON.stringify(theBody),
-              headers: {
-                'Content-Type':'application/json',
-                'access_token': `${userData.api_key}`
-              }
-            })
-            .then(resposta=>resposta.json())
-            .then(resposta => console.log(theBody ? {"resposta":resposta.message,
-                                                     "erro": resposta,
-                                                     "nome": d.nome,
-                                                     "body":theBody,
-                                                     "apiKey":userData.api_key}
-                                                     : "sem body"))
           })
-          //listar saldos
         })
       })
     })
@@ -186,7 +191,8 @@ app.get('/clinica', (req, res)=>{
                             AND bancos.id = clinicas_parceiras_financeiro.banco_id;`,
           (err,data)=>{
             if(err) return console.log(err.message)
-            //Verifica id do banco se possui o padrão 000 com tres números, ex.: banco do brasil -> 001, e não 1
+            //Verifica id do banco se possui o padrão 000 com tres números,
+            //ex.: banco do brasil -> 001, e não 1
             let splited = (data[0].id)
             if((data[0].id.toString().split("")).length<3){
                 if(splited.length===1){
@@ -197,7 +203,6 @@ app.get('/clinica', (req, res)=>{
                   splited = splited.join('')
                 }
               }
-            console.log("splited", splited)
               // monta o body para a requisição
             if(userData.balance>0){
               theBody = {
@@ -215,29 +220,47 @@ app.get('/clinica', (req, res)=>{
                   "bankAccountType": 'CONTA_CORRENTE'
                 }
               }
+              // faz a requisição por fetch pois o axios estava com erro
+              fetch('https://www.asaas.com/api/v3/transfers',{
+                method: 'post',
+                body: JSON.stringify(theBody),
+                headers: {
+                  'Content-Type':'application/json',
+                  'access_token': `${userData.api_key}`
+                }
+              })
+              .then(console.log(theBody))
+            } else {
+              console.log("Sem saldo", userData.razao_social)
             }
-            console.log(theBody)
-            // faz a requisição por fetch pois o axios estava com erro
-            fetch('https://www.asaas.com/api/v3/transfers',{
-              method: 'post',
-              body: JSON.stringify(theBody),
-              headers: {
-                'Content-Type':'application/json',
-                'access_token': `${userData.api_key}`
-              }
-            })
-            .catch(error=>console.log("errooooo", error))
-            .then(resposta => console.log(
-              {
-               "resposta":resposta,
-               "nome": d.razao_social, 
-               "body":theBody, 
-              }))
           })
         })
       })
     })
 })
+
+app.get('/general-split', (req, res) => {
+  //seleciona os profissionais de saúde que recebem split
+ connection.query(`select * from profissional_saude_asaas
+                   where wallet_id = 'd5fbb268-c2d5-489b-85df-b05bac6284a8' 
+                   || wallet_id = '9ddd353f-b54e-49c8-80a9-7e10f6731b00' 
+                   || wallet_id = 'a2c1b2a3-6d89-4360-b068-c81522742949'`,
+              (error, data)=>{
+                if(error) return error.message
+                data.map(user=>{
+                  console.log("user",user)
+                  fetch('https://www.asaas.com/api/v3/finance/split/statistics', {
+                    method: 'get',
+                    headers: {
+                      'Content-Type':'application/json',
+                      'access_token': `${user.api_key}`
+                    }
+                  })
+                  .catch(error=>console.log('error', error))
+                  .then(response => console.log(response))
+                })
+              }
+  )})
 
 app.listen(3000, ()=>{
   console.log("Server running on port 3000")
