@@ -125,7 +125,7 @@ app.get('/profissional', (req, res)=>{
             })
             .then(resposta=>resposta.json())
             .then(resposta => console.log(theBody ? {"resposta":resposta.message,
-                                                     "erro": resposta.errors,
+                                                     "erro": resposta,
                                                      "nome": d.nome,
                                                      "body":theBody,
                                                      "apiKey":userData.api_key}
@@ -227,13 +227,12 @@ app.get('/clinica', (req, res)=>{
               }
             })
             .catch(error=>console.log("errooooo", error))
-            .then(resposta => console.log(theBody?
+            .then(resposta => console.log(
               {
                "resposta":resposta,
                "nome": d.razao_social, 
                "body":theBody, 
-               "apiKey":userData.api_key
-              } : {"Sem saldo":d.razao_social}))
+              }))
           })
         })
       })
