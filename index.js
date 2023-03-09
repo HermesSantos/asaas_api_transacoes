@@ -1,5 +1,5 @@
 import axios from 'axios'
-import express from "express"
+import express, { json } from "express"
 import cors from 'cors'
 import fetch from 'node-fetch'
 import { connection } from './connection.js'
@@ -239,28 +239,77 @@ app.get('/clinica', (req, res)=>{
     })
 })
 
+//rota para splits, ainda em testes
 app.get('/general-split', (req, res) => {
-  //seleciona os profissionais de saúde que recebem split
- connection.query(`select * from profissional_saude_asaas
-                   where wallet_id = 'd5fbb268-c2d5-489b-85df-b05bac6284a8' 
-                   || wallet_id = '9ddd353f-b54e-49c8-80a9-7e10f6731b00' 
-                   || wallet_id = 'a2c1b2a3-6d89-4360-b068-c81522742949'`,
-              (error, data)=>{
-                if(error) return error.message
-                data.map(user=>{
-                  console.log("user",user)
-                  fetch('https://www.asaas.com/api/v3/finance/split/statistics', {
-                    method: 'get',
-                    headers: {
-                      'Content-Type':'application/json',
-                      'access_token': `${user.api_key}`
-                    }
-                  })
-                  .catch(error=>console.log('error', error))
-                  .then(response => console.log(response))
-                })
+  let profissionals
+  let thisBody
+  let bankDatas
+  //seleciona os profissional para receberem o split e suas chaves
+  connection.query(`SELECT 
+                      profissional_saude.id, 
+                      profissional_saude.nome, 
+                      profissional_saude.sobrenome, 
+                      profissional_saude.cpf, 
+                      profissional_saude_asaas.api_key,
+                      profissional_saude_asaas.wallet_id
+                    FROM profissional_saude 
+                    JOIN profissional_saude_asaas 
+                    WHERE (profissional_saude.id = 1 OR profissional_saude.id = 2) 
+                    AND (profissional_saude_asaas.profissional_id = profissional_saude.id) 
+                    GROUP by profissional_saude.id;`,
+    (error, data) => {
+      if(error) console.log(error)
+      profissionals = data
+      profissionals.map(profissional => {
+        //busca os dados bancários dos profissionais
+        connection.query(`SELECT * from profissional_saude_financeiro 
+                          WHERE profissional_id = 1 
+                          or profissional_id = 2 
+                          GROUP BY profissional_id`, (error, data) => {
+          if(error) console.log(error)
+
+          bankDatas = data
+          bankDatas.map(bank => {
+            //pega os valores de income do split
+            axios.get('https://www.asaas.com/api/v3/finance/split/statistics', {
+              headers: {
+                'access_token': `${profissional.api_key}`,
+                'Content-Type': 'application/json'
               }
-  )})
+            })
+            .catch(error => console.log(error?.response))
+            .then(split => {
+              //transfere da conta geral da DrCuidado para a conta do profissional
+              console.log({"w_id": profissional.wallet_id, "prfissional": profissional})
+              // fetch('https://www.asaas.com/api/v3/transfers', {
+              //   method: 'post'
+              // })
+              //monta o body da requisição de tranferência de valores
+              // thisBody = {
+              //     "value": split.data.income,
+              //     "bankAccount": {
+              //         "bank": {
+              //             "code": `${bank.banco_id}`
+              //         },
+              //         "accountName": `${bank.nome}`,
+              //         "ownerName": "Marcelo Almeida",
+              //         "ownerBirthDate": "1995-04-12",
+              //         "cpfCnpj": "52233424611",
+              //         "agency": "1263",
+              //         "account": "9999991",
+              //         "accountDigit": "1",
+              //         "bankAccountType": "CONTA_CORRENTE",
+              //     },
+              //     "operationType": "PIX",
+              //     "scheduleDate": "2018-01-26",
+              //     "description": "Churrasco pago via Pix agendado"
+              // }
+            })
+          })
+        })
+      })
+    })
+  })
 
 app.listen(3000, ()=>{
   console.log("Server running on port 3000")

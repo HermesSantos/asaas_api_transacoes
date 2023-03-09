@@ -12,5 +12,5 @@ export const connection = mysql.createConnection(config)
 
 connection.connect((err)=>{
   if(err) return console.log(err.message)
-  return console.log("Database connected")
+  return console.log("------------Database connected--------------")
 })
