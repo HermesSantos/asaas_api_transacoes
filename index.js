@@ -15,7 +15,7 @@ app.get('/', (req, res)=>{
 app.get('/general-balance', (req, res) => {
   let profissionais
   let clinicas
-  //profissionais de saúde
+  //busca pelos profissionais de saúde
   connection.query(`SELECT
                       profissional_saude.nome,
                       profissional_saude.sobrenome,
@@ -42,6 +42,7 @@ app.get('/general-balance', (req, res) => {
                              )
                  })
               })
+  //busca pelas clinicas parceiras
   connection.query(`SELECT
                       clinicas_parceiras.razao_social,
                       clinicas_parceiras_asaas.api_key
@@ -92,7 +93,6 @@ app.get('/profissional', (req, res)=>{
          headers: {
           'access_token': `${d.api_key}`,
           'Content-Type': 'application/json',
-          'limit': '1000'
          }
        })
        .then((resp)=>{
@@ -138,7 +138,7 @@ app.get('/profissional', (req, res)=>{
                 "value": userData.balance,
                 "bankAccount": {
                   "bank": {
-                    "code": `${splited}`
+                    "code": `${splited.join('')}`
                   },
                   "accountName": data[0].nome,
                   "ownerName": d.nome+' '+d.sobrenome,
@@ -149,7 +149,7 @@ app.get('/profissional', (req, res)=>{
                   "bankAccountType": 'CONTA_CORRENTE'
                 }
               }
-              //faz a requisição por fetch pois o axios estava com erro
+              //faz a requisição para tranferência nas contas por fetch pois o axios estava com erro
               fetch('https://www.asaas.com/api/v3/transfers',{
                 method: 'post',
                 body: JSON.stringify(theBody),
@@ -159,10 +159,12 @@ app.get('/profissional', (req, res)=>{
                 }
               })
               .then(resposta => console.log(theBody ? {"resposta":resposta.message,
-                                                       "erro": resposta,
+                                                       "erro": resposta.erro,
                                                        "nome": d.nome,
                                                        "body":theBody,
-                                                       "apiKey":userData.api_key}
+                                                       "apiKey":userData.api_key,
+                                                       "bank": theBody.bankAccount.bank
+                                                      }
                                                        : "sem body"))
             } else {
               console.log("Sem saldo", userData.nome)
