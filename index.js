@@ -13,32 +13,63 @@ app.get('/', (req, res)=>{
 })
 
 app.get('/general-balance', (req, res) => {
+  let profissionais
+  let clinicas
+  //profissionais de saúde
   connection.query(`SELECT
-                    profissional_saude.nome,
-                    profissional_saude.sobrenome,
-                    profissional_saude_asaas.api_key,
-                    clinicas_parceiras.razao_social,
-                    clinicas_parceiras_asaas.api_key
+                      profissional_saude.nome,
+                      profissional_saude.sobrenome,
+                      profissional_saude_asaas.api_key
                     FROM profissional_saude_asaas
-                    JOIN (profissional_saude, clinicas_parceiras, clinicas_parceiras_asaas)
+                    JOIN (profissional_saude)
                     WHERE profissional_saude.id = profissional_saude_asaas.profissional_id
-                    AND clinicas_parceiras.id = clinicas_parceiras_asaas.clinica_parceira_id
-                    `,
-    (err, data) => {
-      if(err) return console.log(err)
-      data.map(user=>{
-       axios.get('https://www.asaas.com/api/v3/finance/balance', {
-         headers: {
-          'access_token': `${user.api_key}`,
-          'Content-Type': 'application/json',
-          'limit': '1000'
-         }
-       }).then(response=>{
-        console.log({"Nome":user.nome,"Balance":response.data.balance})
-       })
-      })
-    }
-  )
+                    GROUP BY profissional_saude.nome`,
+              (err, data) => {
+                if(err) console.log(err)
+                profissionais = data
+                profissionais.map(user=>{
+                 axios.get('https://www.asaas.com/api/v3/finance/balance', {
+                   headers: {
+                    'access_token': `${user.api_key}`,
+                    'Content-Type': 'application/json',
+                    'limit': '1000'
+                   }
+                 }).then(response=>{
+                  let finalData = {"Nome":user.nome,"Balance":response.data.balance}
+                  console.log(finalData.Nome, finalData.Balance, finalData.Balance>0 
+                                                                 ? '<--------------------------'
+                                                                 : 'Sem saldo'
+                             )
+                 })
+              })
+  connection.query(`SELECT
+                      clinicas_parceiras.razao_social,
+                      clinicas_parceiras_asaas.api_key
+                    FROM clinicas_parceiras_asaas
+                    JOIN (clinicas_parceiras)
+                    WHERE clinicas_parceiras.id = clinicas_parceiras_asaas.clinica_parceira_id
+                    GROUP BY clinicas_parceiras.razao_social`, 
+              (err, data) => {
+                if(err) console.log(err)
+                clinicas = data
+                clinicas.map(user=>{
+                 axios.get('https://www.asaas.com/api/v3/finance/balance', {
+                   headers: {
+                    'access_token': `${user.api_key}`,
+                    'Content-Type': 'application/json',
+                    'limit': '1000'
+                   }
+                 }).then(response=>{
+                  let finalData2 = {"Nome":user.razao_social,"Balance":response.data.balance}
+                  console.log(finalData2.Nome, finalData2.Balance, finalData2.Balance>0 
+                                                                 ? '<--------------------------'
+                                                                 : 'Sem saldo'
+                             )
+
+                 })
+              })
+              })
+  })
 })
 
 app.get('/profissional', (req, res)=>{
