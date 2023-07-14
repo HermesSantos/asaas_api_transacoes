@@ -2,10 +2,10 @@ import mysql from 'mysql2'
 
 const config = {
   host: "localhost",
-  port: "3030",
-  database: "drcuidado_old",
-  user: "root",
-  password: ""
+  port: "3306",
+  database: "drcuidadosaude",
+  user: "hermes",
+  password: "awsx1215"
 }
 
 export const connection = mysql.createConnection(config)

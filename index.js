@@ -12,6 +12,11 @@ app.get('/', (req, res)=>{
   return res.json("online")
 })
 
+app.get('/login', (req, res)=>{
+  let data = req.body
+  console.log(data)
+})
+
 app.get('/general-balance', (req, res) => {
   let profissionais
   let clinicas
@@ -28,19 +33,21 @@ app.get('/general-balance', (req, res) => {
                 if(err) console.log(err)
                 profissionais = data
                 profissionais.map(user=>{
-                 axios.get('https://www.asaas.com/api/v3/finance/balance', {
-                   headers: {
-                    'access_token': `${user.api_key}`,
-                    'Content-Type': 'application/json',
-                    'limit': '1000'
-                   }
-                 }).then(response=>{
-                  let finalData = {"Nome":user.nome,"Balance":response.data.balance}
-                  console.log(finalData.Nome, finalData.Balance, finalData.Balance>0 
-                                                                 ? '<--------------------------'
-                                                                 : 'Sem saldo'
-                             )
-                 })
+                if(user.api_key){
+                  axios.get('https://www.asaas.com/api/v3/finance/balance', {
+                    headers: {
+                     'access_token': `${user.api_key}`,
+                     'Content-Type': 'application/json',
+                     'limit': '1000'
+                    }
+                  }).then(response=>{
+                   let finalData = {"Nome":user.nome,"Balance":response.data.balance}
+                   console.log(finalData.Nome, finalData.Balance, finalData.Balance>0 
+                                                                  ? '<--------------------------'
+                                                                  : 'Sem saldo'
+                              )
+                  })
+                }
               })
   //busca pelas clinicas parceiras
   connection.query(`SELECT
